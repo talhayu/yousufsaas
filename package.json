@@ -1,0 +1,19 @@
+{
+  "name": "yusrflow",
+  "private": true,
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "dev": "concurrently -n server,client -c blue,magenta \"npm run dev -w server\" \"npm run dev -w client\"",
+    "build": "npm run build -w server && npm run build -w client",
+    "start": "npm run start -w server",
+    "seed": "npm run seed -w server",
+    "reset": "npm run reset -w server"
+  },
+  "devDependencies": {
+    "@vercel/node": "^5.10.2",
+    "concurrently": "^9.2.1"
+  }
+}
