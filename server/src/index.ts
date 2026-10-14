@@ -6,10 +6,33 @@ import { HttpError } from "./errors";
 import router from "./routes";
 import { seedIfEmpty } from "./seed";
 
-export const app = express();
+const app = express();
+
+let ready: Promise<void> | null = null;
+
+export function boot(): Promise<void> {
+  if (!ready) {
+    ready = (async () => {
+      await ensureSchema();
+      await seedIfEmpty();
+    })();
+  }
+  return ready;
+}
+
 app.use(cors());
 app.use(express.json({ limit: "2mb" }));
+app.use(async (_req, _res, next) => {
+  try {
+    await boot();
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+// Accept both /api/... (same-domain rewrite) and /... (if the service strips the prefix).
 app.use("/api", router);
+app.use("/", router);
 app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   if (error instanceof ZodError) {
     res.status(400).json({ error: error.issues[0]?.message ?? "Invalid input" });
@@ -23,17 +46,9 @@ app.use((error: unknown, _req: express.Request, res: express.Response, _next: ex
   res.status(500).json({ error: "Unexpected server error" });
 });
 
-let ready: Promise<void> | null = null;
-
-export function boot(): Promise<void> {
-  if (!ready) {
-    ready = (async () => {
-      await ensureSchema();
-      await seedIfEmpty();
-    })();
-  }
-  return ready;
-}
+export { app };
+// Vercel Express requires a default export that is the app (a function) or an http.Server.
+export default app;
 
 async function start() {
   await boot();
